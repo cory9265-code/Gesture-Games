@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>驗收｜手勢音樂粒子秀</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0a1220;color:#e9f0fb;font-family:"Noto Sans TC","Microsoft JhengHei","PingFang TC",sans-serif;padding:24px 32px}
+h1{margin:0 0 6px;font-size:30px;text-wrap:balance}p.sub{color:#9fb2d0;margin:0 0 18px;font-size:16px}
+.top{display:flex;flex-wrap:wrap;gap:16px;align-items:center;margin-bottom:18px}
+.big{font-size:28px;font-weight:800;border-radius:14px;padding:14px 28px;background:#22324f;color:#c8d6ee}
+.big.ok{background:#12402a;color:#3ddc84}.big.no{background:#5a1d20;color:#ff8f92}
+.top a,.top button{font:inherit;font-size:17px;color:#e9f0fb;background:#16233d;border:1px solid #2a3d5e;border-radius:10px;padding:10px 16px;text-decoration:none;cursor:pointer}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:16px}
+section{background:#121e33;border:1px solid #2a3d5e;border-radius:14px;padding:16px 18px}
+h2{color:#22d3ee;font-size:19px;margin:0 0 10px}
+ol{margin:0;padding:0;list-style:none}li{padding:8px 0;border-bottom:1px solid #22324f;font-size:17px;display:flex;gap:10px}
+li b{flex:none;width:26px}li.ok b{color:#3ddc84}li.no b{color:#ff8f92}li small{display:block;color:#ffb4b6;font-size:14.5px;margin-top:4px;overflow-wrap:anywhere}
+iframe{width:100%;height:260px;border:1px solid #2a3d5e;border-radius:12px;background:#05060f;margin-top:12px}
+@media(max-width:520px){body{padding:16px}.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<h1>驗收｜手勢音樂粒子秀</h1>
+<p class="sub">每一項都是程式當場測出來的，不是 AI 說的。19 項全部綠燈才算完成。</p>
+<div class="top"><div class="big" id="big">測試中…</div><a href="../index.html">▶ 打開我的粒子秀</a><button id="again" type="button">重新測一次</button></div>
+<div class="grid">
+  <section><h2>手勢邏輯（13 項）</h2><ol id="logic"></ol></section>
+  <section><h2>真的網頁（6 項）</h2><ol id="page"></ol><iframe id="frame" title="測試中的粒子秀"></iframe></section>
+</div>
+<script type="module">
+import { logicTests, pageTests } from './tests.js';
+const $ = s => document.querySelector(s);
+const row = (ol, name, err) => { const li = document.createElement('li'); li.className = err ? 'no' : 'ok'; li.innerHTML = `<b>${err ? '✘' : '✔'}</b><div></div>`; li.lastChild.textContent = name; if (err) { const s = document.createElement('small'); s.textContent = err; li.lastChild.append(s); } ol.append(li); };
+async function runAll() {
+  $('#logic').replaceChildren(); $('#page').replaceChildren(); $('#big').className = 'big'; $('#big').textContent = '測試中…';
+  let total = 0, bad = 0, G = null, CONFIG = null;
+  const run = async (ol, list) => { for (const [name, fn] of list) { total++; try { await fn(); row(ol, name); } catch (e) { bad++; row(ol, name, e.message); } } };
+  try { G = await import('../js/gesture.js?v=' + Date.now()); CONFIG = (await import('../js/config.js?v=' + Date.now())).default; }
+  catch (e) { total = 19; bad = 19; row($('#logic'), '讀取 js/gesture.js 與 js/config.js', e.message); }
+  if (G) {
+    await run($('#logic'), logicTests(G, CONFIG));
+    const f = $('#frame'), errs = [];
+    await new Promise(ok => { f.onload = ok; f.src = '../index.html?test=1&v=' + Date.now(); setTimeout(ok, 8000); });
+    try { f.contentWindow.__errors = errs; f.contentWindow.addEventListener('error', e => errs.push(e.message)); f.contentWindow.addEventListener('unhandledrejection', e => errs.push(String(e.reason))); } catch (e) {}
+    for (let i = 0; i < 60 && !f.contentWindow.__show; i++) await new Promise(r => setTimeout(r, 100));
+    await run($('#page'), pageTests(f, CONFIG));
+  }
+  $('#big').className = 'big ' + (bad ? 'no' : 'ok'); $('#big').textContent = bad ? `⛔ ${total - bad}/${total}，還有 ${bad} 項沒過` : `✅ ${total}/${total} 全部通過`;
+  document.title = `驗收 ${total - bad}/${total}`; window.__result = { total, bad };
+}
+$('#again').onclick = runAll; runAll();
+</script>
+</body>
+</html>
