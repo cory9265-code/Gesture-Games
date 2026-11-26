@@ -1,4 +1,54 @@
 <!doctype html>
-<html lang="zh-Hant-TW"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>手勢音樂粒子秀（還沒做）</title>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#05060f;color:#eef3ff;font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif;padding:24px;text-align:center}h1{font-size:40px;text-wrap:balance}p{font-size:20px;line-height:1.8;color:#b9c7e6}a{color:#5ee0ff}</style></head>
-<body><div><h1>這裡還是空的</h1><p>這是起始包：手部辨識模型和驗收測試已經準備好，畫面要請您的 AI 做出來。<br>回講義把規格寫完、打包，交給 AI 執行。做完再重新整理這一頁。</p><p><a href="驗收/">看驗收頁（現在應該是紅燈）</a></p></div></body></html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的手勢音樂粒子秀</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="stage" aria-label="粒子畫布"></canvas>
+
+<header class="hud top">
+  <h1 id="title">我的手勢音樂粒子秀</h1>
+  <div class="stats" aria-live="polite">
+    <div><small>手指</small><strong id="vFingers">—</strong></div>
+    <div><small>形狀</small><strong id="vShape">—</strong></div>
+    <div class="wide"><small>音樂</small><strong id="vMusic">⏸ 已暫停</strong></div>
+    <div><small>模式</small><strong id="vMode">滑鼠</strong></div>
+  </div>
+</header>
+
+<p id="status" hidden></p>
+<button id="soundHint" type="button" hidden>🔊 沒有聲音？點一下這裡（或畫面任一處）就會出聲</button>
+
+<aside class="hud side">
+  <h2>手勢對照表</h2>
+  <ul id="legend"></ul>
+  <p id="mouseHelp">滑鼠模式：移動滑鼠＝食指｜按 1～5＝比幾根手指｜按住空白鍵＝握拳｜滾輪＝放大縮小｜N＝下一首</p>
+  <div class="switch">
+    <button id="toCamera" type="button" hidden>改用鏡頭</button>
+    <button id="toMouse" type="button" hidden>改用滑鼠</button>
+  </div>
+</aside>
+
+<footer class="privacy">🔒 影像只在這台電腦處理，不上傳、不存檔</footer>
+
+<div id="preview" hidden><video id="video" playsinline muted></video></div>
+
+<section id="start" role="dialog" aria-labelledby="startTitle">
+  <div class="card">
+    <h1 id="startTitle">我的手勢音樂粒子秀</h1>
+    <p class="lead">伸出食指移動粒子，比 1～5 換形狀，握拳換音樂。</p>
+    <p class="sound">🔊 請先把喇叭打開。點下面任一個按鈕，音樂就會開始播放。</p>
+    <div class="btns">
+      <button id="btnCamera" type="button" class="primary">📷 使用鏡頭</button>
+      <button id="btnMouse" type="button">🖱️ 沒有鏡頭，用滑鼠玩</button>
+    </div>
+    <p class="note">影像只在這台電腦處理，不上傳、不存檔。</p>
+  </div>
+</section>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
