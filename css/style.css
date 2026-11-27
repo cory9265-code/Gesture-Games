@@ -87,3 +87,9 @@ body[data-theme="festival"] { --accent: #ffd36a; --panel: rgba(36, 8, 6, .62); }
 /* 不顯示手勢對照表與手勢按鈕（電腦、手機都一樣），讓使用者自己發掘 */
 .side h2, #legend, #mouseHelp { display: none !important; }
 .switch { margin-top: 0 !important; }
+
+/* 標題列下方的提示（位置由 app.js 依標題列高度擺放） */
+#hint { position: fixed; z-index: 2; top: 92px; left: 50%; transform: translateX(-50%); margin: 0; pointer-events: none;
+  padding: 6px 18px; border-radius: 999px; font-size: 17px; letter-spacing: .08em; white-space: nowrap;
+  color: #dbe8ff; background: rgba(255,255,255,.06); border: 1px solid var(--line); text-shadow: 0 0 10px rgba(120,180,255,.6); }
+@media (max-width: 640px) { #hint { font-size: 14px; padding: 5px 14px; } }

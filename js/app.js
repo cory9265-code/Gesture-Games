@@ -1,10 +1,10 @@
 /* 把鏡頭、手勢、粒子、音樂接起來。鏡頭、滑鼠、驗收都走同一條 feed()。 */
-import CONFIG from './config.js?v=7';
-import { gestureCode, armsSpread, GestureSmoother, FistHold, shapeFor } from './gesture.js?v=7';
-import { ParticleField, SHAPE_LABELS } from './particles.js?v=7';
-import { Music } from './music.js?v=7';
-import { startCamera, explainCameraError } from './camera.js?v=7';
-import { drawQR } from './qr.js?v=7';
+import CONFIG from './config.js?v=9';
+import { gestureCode, armsSpread, GestureSmoother, FistHold, shapeFor } from './gesture.js?v=9';
+import { ParticleField, SHAPE_LABELS } from './particles.js?v=9';
+import { Music } from './music.js?v=9';
+import { startCamera, explainCameraError } from './camera.js?v=9';
+import { drawQR } from './qr.js?v=9';
 
 const $ = s => document.querySelector(s);
 const TEST = new URLSearchParams(location.search).get('test') === '1';
@@ -24,6 +24,13 @@ document.body.dataset.theme = CONFIG.theme || 'space';
 document.body.classList.toggle('touch', TOUCH);   // 觸控裝置才保留手勢按鈕（沒有鍵盤只能靠它玩）
 $('#title').textContent = CONFIG.title;
 $('#startTitle').textContent = CONFIG.title;
+// 提示放在標題列正下方；狀態訊息再往下排，不會互相蓋住
+function placeHint() {
+  const y = $('.hud.top').getBoundingClientRect().bottom + 10;
+  $('#hint').style.top = y + 'px';
+  $('#status').style.top = innerWidth > 640 ? (y + $('#hint').offsetHeight + 10) + 'px' : '';   // 手機版狀態訊息在下方
+}
+addEventListener('resize', placeHint); placeHint();
 
 /* ---------- 狀態 ---------- */
 const field = new ParticleField($('#stage'), { count: CONFIG.particles, theme: CONFIG.theme, shape: shapes[0] });

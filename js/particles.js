@@ -115,7 +115,7 @@ function cautionPoints(n) {
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.font = '900 230px "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif';
     g.fillText('小心', 320, 165);
-  }).map(p => ({ ...p, x: p.x * 1.15, y: p.y * 1.15 }));
+  }).map(p => ({ ...p, x: p.x * 1.6, y: p.y * 1.6 }));
 }
 
 /** 隱藏版 2：原創的女生肖像線條畫（長髮、五官、耳環、髮上的花） */
