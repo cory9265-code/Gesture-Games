@@ -16,7 +16,7 @@ if not defined PY (
 echo Gesture Show is running at http://127.0.0.1:%PORT%/
 echo Keep this window open. Close it to stop.
 start "" http://127.0.0.1:%PORT%/
-%PY% -m http.server %PORT% --bind 127.0.0.1
+%PY% serve.py %PORT%
 if errorlevel 1 (
   echo.
   echo [ERROR] Port %PORT% is in use. Close the other black window and try again.

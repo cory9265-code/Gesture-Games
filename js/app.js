@@ -17,6 +17,7 @@ const THEME_LABEL = { space: '星空', ocean: '海洋', neon: '霓虹', festival
 
 document.title = CONFIG.title;
 document.body.dataset.theme = CONFIG.theme || 'space';
+document.body.classList.toggle('touch', TOUCH);   // 觸控裝置才保留手勢按鈕（沒有鍵盤只能靠它玩）
 $('#title').textContent = CONFIG.title;
 $('#startTitle').textContent = CONFIG.title;
 
@@ -98,18 +99,17 @@ async function useCamera() {
   try {
     cam = await startCamera($('#video'), msg => setStatus(msg + ' 這段時間滑鼠照樣能玩。', 'info'));
     mode = 'camera'; $('#preview').hidden = false;
-    setStatus('鏡頭已開啟：伸出食指移動看看，比 1～5 換形狀。', 'ok');
-    setTimeout(() => { if (mode === 'camera') setStatus(''); }, 5000);
+    setStatus('');   // 不顯示操作提示，讓使用者自己發掘
   } catch (e) {
     cam = null; mode = 'mouse'; $('#preview').hidden = true;
-    setStatus(explainCameraError(e) + '。已自動改成' + (TOUCH ? '觸控' : '滑鼠') + '模式：' + MOUSE_HELP, 'warn');
+    setStatus(explainCameraError(e) + '。已自動改成' + (TOUCH ? '觸控' : '滑鼠') + '模式。', 'warn');
+    setTimeout(() => { if (mode === 'mouse' && $('#status').className === 'warn') setStatus(''); }, 5000);
   }
   render();
 }
 function useMouse() {
   if (cam) { cam.stop(); cam = null; }
-  mode = 'mouse'; $('#preview').hidden = true; setStatus('現在是' + (TOUCH ? '觸控' : '滑鼠') + '模式：' + MOUSE_HELP, 'info');
-  setTimeout(() => { if (mode === 'mouse' && $('#status').className === 'info') setStatus(''); }, 7000);
+  mode = 'mouse'; $('#preview').hidden = true; setStatus('');   // 不顯示操作提示，讓使用者自己發掘
   render();
 }
 $('#toCamera').addEventListener('click', () => useCamera());

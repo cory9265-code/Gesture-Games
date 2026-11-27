@@ -83,3 +83,9 @@ body[data-theme="festival"] { --accent: #ffd36a; --panel: rgba(36, 8, 6, .62); }
 #shareBox .url { margin: 12px 0 6px; font-size: 14px; color: #cfdaf2; overflow-wrap: anywhere; }
 #shareBox .warn { margin: 6px 0 14px; font-size: 14px; line-height: 1.6; color: #ffd08a; }
 #btnShare2 { margin-top: 12px; }
+
+/* 不顯示手勢對照表，讓使用者自己發掘 */
+body:not(.touch) .side h2, body:not(.touch) #legend, body:not(.touch) #mouseHelp { display: none; }
+body:not(.touch) .switch { margin-top: 0; }
+/* 觸控裝置：保留「比 1～5／握拳」按鈕當操作鍵，但不寫出對應的形狀與功能 */
+body.touch .side h2, body.touch #mouseHelp, body.touch #legend li.static, body.touch #legend span { display: none; }
