@@ -3,13 +3,13 @@
 export const SHAPE_LABELS = {
   sphere: '球體', heart: '愛心', star: '星星', galaxy: '銀河', firework: '煙火',
   spiral: '螺旋', snow: '雪花', dna: 'DNA', butterfly: '蝴蝶', infinity: '無限', note: '音符',
-  castle: '城堡', castleShow: '城堡煙火', missile: '響尾蛇飛彈', mountains: '群山', strike: '飛彈攻山'
+  castle: '城堡', castleShow: '城堡煙火', caution: '小心', beauty: '美女', missile: '響尾蛇飛彈', mountains: '群山', strike: '飛彈攻山'
 };
 
 /** 佔滿整個視窗的形狀（不跟手移動、不轉動）。 */
 const FULLSCREEN = new Set(['mountains', 'strike']);
 /** 固定在畫面中央、放大顯示的形狀（不跟手移動、不轉動），輪廓才看得清楚。 */
-const CENTERED = new Set(['castle', 'castleShow']);
+const CENTERED = new Set(['castle', 'castleShow', 'caution', 'beauty']);
 
 export const THEMES = {
   space:    { bg: [3, 4, 14],   colors: ['#ffffff', '#9fd8ff', '#c9b0ff', '#7fb0ff', '#ffe7a6'], stars: true },
@@ -93,6 +93,57 @@ function missilePoints(n) {
   return body;
 }
 
+/** 在隱藏的畫布上畫圖，再從有顏色的像素裡隨機挑點（只在瀏覽器裡用）。 */
+function canvasPoints(n, w, h, draw) {
+  if (typeof document === 'undefined') return [];
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true });
+  draw(g);
+  const data = g.getImageData(0, 0, w, h).data, on = [];
+  for (let y = 0; y < h; y += 2) for (let x = 0; x < w; x += 2) if (data[(y * w + x) * 4 + 3] > 128) on.push(x, y);
+  const pts = [], s = Math.max(w, h) / 2, cnt = on.length / 2;
+  for (let i = 0; i < n && cnt; i++) {
+    const k = ((Math.random() * cnt) | 0) * 2;
+    pts.push({ x: (on[k] + rnd(-1, 1) - w / 2) / s, y: -(on[k + 1] + rnd(-1, 1) - h / 2) / s, z: rnd(-0.02, 0.02) });
+  }
+  return pts;
+}
+
+/** 隱藏版 1：粒子排出「小心」 */
+function cautionPoints(n) {
+  return canvasPoints(n, 640, 320, g => {
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '900 230px "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", sans-serif';
+    g.fillText('小心', 320, 165);
+  }).map(p => ({ ...p, x: p.x * 1.15, y: p.y * 1.15 }));
+}
+
+/** 隱藏版 2：原創的女生肖像線條畫（長髮、五官、耳環、髮上的花） */
+function beautyPoints(n) {
+  return canvasPoints(n, 400, 420, g => {
+    g.translate(200, 200); g.strokeStyle = '#fff'; g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round';
+    const path = d => g.stroke(new Path2D(d));
+    path('M -70 -40 C -72 40, -35 95, 0 100 C 35 95, 72 40, 70 -40');                         // 臉
+    path('M 0 -138 C -115 -138, -122 -40, -106 60 C -96 140, -128 175, -150 205');             // 頭髮外側
+    path('M 0 -138 C 115 -138, 122 -40, 106 60 C 96 140, 128 175, 150 205');
+    path('M -70 -40 C -62 -105, 25 -118, 72 -45');                                             // 瀏海
+    path('M -45 -98 C -25 -60, 15 -72, 60 -60');
+    path('M -88 30 C -80 100, -95 150, -110 190'); path('M 88 30 C 80 100, 95 150, 110 190');   // 髮絲
+    for (const s of [-1, 1]) {
+      path(`M ${s * 47} -20 Q ${s * 29} -36 ${s * 11} -20 Q ${s * 29} -11 ${s * 47} -20`);       // 眼睛
+      g.beginPath(); g.arc(s * 29, -21, 6, 0, Math.PI * 2); g.fill();
+      path(`M ${s * 47} -21 L ${s * 54} -27 M ${s * 42} -27 L ${s * 46} -34 M ${s * 35} -30 L ${s * 37} -38`);   // 睫毛
+      path(`M ${s * 52} -42 Q ${s * 32} -54 ${s * 12} -45`);                                     // 眉毛
+      path(`M ${s * 25} 95 L ${s * 28} 140 C ${s * 60} 150, ${s * 110} 160, ${s * 140} 205`);    // 脖子、肩膀
+    }
+    path('M 0 -8 Q -6 15 -8 22 Q 0 27 7 22');                                                  // 鼻子
+    path('M -21 50 Q -8 41 0 45 Q 8 41 21 50 Q 0 64 -21 50 M -21 50 Q 0 54 21 50');            // 嘴唇
+    g.beginPath(); g.arc(-73, 26, 6, 0, Math.PI * 2); g.stroke(); g.beginPath(); g.arc(73, 26, 6, 0, Math.PI * 2); g.stroke();   // 耳環
+    for (let k = 0; k < 5; k++) { const a = k * Math.PI * 2 / 5; g.beginPath(); g.arc(-72 + Math.cos(a) * 11, -100 + Math.sin(a) * 11, 8, 0, Math.PI * 2); g.stroke(); }   // 花
+    g.beginPath(); g.arc(-72, -100, 4, 0, Math.PI * 2); g.fill();
+  }).map(p => ({ ...p, x: p.x * 1.1, y: p.y * 1.1 + 0.05 }));
+}
+
 /** 佔滿視窗的群山（x、y 都是 -1～1 對應整個視窗）。前排深、後排淺。 */
 const ridge = (x, peaks, base) => base + Math.max(...peaks.map(([c, h, w]) => h * Math.max(0, 1 - Math.abs(x - c) / w))) + 0.02 * Math.sin(x * 23) + 0.015 * Math.sin(x * 51);
 const FRONT = [[-0.8, 0.4, 0.4], [-0.32, 0.6, 0.42], [0.12, 0.3, 0.32], [0.55, 0.65, 0.4], [0.95, 0.35, 0.35]];
@@ -113,6 +164,8 @@ function mountainPoints(n) {
 function shapePoints(name, n) {
   if (name === 'castle' || name === 'castleShow') return shuffle(castlePoints(n));
   if (name === 'missile') return shuffle(missilePoints(n));
+  if (name === 'caution') return shuffle(cautionPoints(n));
+  if (name === 'beauty') return shuffle(beautyPoints(n));
   if (name === 'mountains' || name === 'strike') return shuffle(mountainPoints(n));
   const pts = [];
   for (let i = 0; i < n; i++) {

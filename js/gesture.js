@@ -50,7 +50,8 @@ export function isSixSign(landmarks) {
 /** 特殊手勢代碼（6～10），不是特殊手勢就回傳一般的手指數 0～5。
    單手：6＝大拇指＋小指｜7＝大拇指＋食指｜8＝大拇指＋食指＋中指｜9＝除了小指都伸出
    雙手（兩手靠近，手腕左右距離 < spreadGap）：9＝一手張開＋一手比 4｜10＝兩手都張開
-   兩手拉很開時不算 9／10，留給「雙手張開放煙火」。 */
+   兩手拉很開時不算 9／10，留給「雙手張開放煙火」。
+   隱藏版：11＝只伸中指｜12＝食指＋小指（中指、無名指收起來） */
 export function gestureCode(hands, spreadGap = 0.5) {
   if (!Array.isArray(hands) || !hands.length) return null;
   const [a, b] = hands;
@@ -62,6 +63,9 @@ export function gestureCode(hands, spreadGap = 0.5) {
   if (!valid(a)) return null;
   if (isSixSign(a)) return 6;
   const [i, m, r, p] = fourFingers(a), th = thumbOut(a);
+  // 隱藏版：11＝只伸中指｜12＝食指＋小指（中指、無名指收起來，大拇指不限）
+  if (m && !i && !r && !p && !th) return 11;
+  if (i && p && !m && !r) return 12;
   // 比 3 的兩種比法：食指＋中指＋無名指，或中指＋無名指＋小指（大拇指收起來或圈住另一根手指）
   if (m && r && ((i && !p) || (!i && p)) && !th) return 3;
   if (!i && m && r && p) return 3;

@@ -1,10 +1,10 @@
 /* 把鏡頭、手勢、粒子、音樂接起來。鏡頭、滑鼠、驗收都走同一條 feed()。 */
-import CONFIG from './config.js?v=6';
-import { gestureCode, armsSpread, GestureSmoother, FistHold, shapeFor } from './gesture.js?v=6';
-import { ParticleField, SHAPE_LABELS } from './particles.js?v=6';
-import { Music } from './music.js?v=6';
-import { startCamera, explainCameraError } from './camera.js?v=6';
-import { drawQR } from './qr.js?v=6';
+import CONFIG from './config.js?v=7';
+import { gestureCode, armsSpread, GestureSmoother, FistHold, shapeFor } from './gesture.js?v=7';
+import { ParticleField, SHAPE_LABELS } from './particles.js?v=7';
+import { Music } from './music.js?v=7';
+import { startCamera, explainCameraError } from './camera.js?v=7';
+import { drawQR } from './qr.js?v=7';
 
 const $ = s => document.querySelector(s);
 const TEST = new URLSearchParams(location.search).get('test') === '1';
@@ -14,7 +14,9 @@ const MOUSE_HELP = TOUCH
   ? '手指在畫面上滑動＝食指，點下方「比 1～5」換形狀，按住「握拳」切換音樂。'
   : '移動滑鼠＝食指，按 1～5 換形狀，按住空白鍵＝握拳。';
 /** 特殊手勢 6～10 對應的畫面（1～5 照 config.js 的 shapes） */
-const SCENES = { 6: 'castle', 7: 'castleShow', 8: 'missile', 9: 'mountains', 10: 'strike' };
+const SCENES = { 6: 'castle', 7: 'castleShow', 8: 'missile', 9: 'mountains', 10: 'strike', 11: 'caution' };
+const BEAUTY_HOLD = 3;   // 隱藏版：食指＋小指要比超過幾秒才出現美女圖
+let holdSince = null;
 const THEME_LABEL = { space: '星空', ocean: '海洋', neon: '霓虹', festival: '節慶' };
 
 document.title = CONFIG.title;
@@ -37,11 +39,15 @@ function feed(t, raw, x, y) {
   lastT = t;
   if (raw === null || raw === undefined || !Number.isFinite(raw)) {
     // 手離開畫面：形狀、音樂維持原樣；握拳計時歸零
-    fist.update(t, false); smoother.reset(); fingers = null; render(); return;
+    fist.update(t, false); smoother.reset(); fingers = null; holdSince = null; render(); return;
   }
   smoother.add(raw);
   fingers = smoother.value;
-  const s = shapeFor(fingers, shapes) || SCENES[fingers] || null;
+  let s = shapeFor(fingers, shapes) || SCENES[fingers] || null;
+  if (fingers === 12) {                                   // 隱藏版 2：比著超過 3 秒才換
+    if (holdSince === null) holdSince = t;
+    if (t - holdSince >= BEAUTY_HOLD) s = 'beauty';
+  } else holdSince = null;
   if (s && s !== shape) { shape = s; field.setShape(s); }
   if (fist.update(t, raw === 0 && fingers === 0)) music.toggle();
   if (Number.isFinite(x) && Number.isFinite(y)) field.setTarget(x, y);
@@ -64,7 +70,7 @@ $('#legend').innerHTML = shapes.map((s, i) =>
 
 let lastUi = '';
 function render() {
-  const fTxt = fingers === null ? '—' : String(fingers);
+  const fTxt = fingers === null ? '—' : fingers > 10 ? '？' : String(fingers);   // 隱藏版不顯示代碼
   const mTxt = music.playing ? `♪ 播放中：${music.trackName}` : '⏸ 已暫停';
   const key = [mode, fTxt, shape, mTxt, music.audible].join('|');
   if (key === lastUi) return; lastUi = key;
