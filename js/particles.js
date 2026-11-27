@@ -2,8 +2,14 @@
 
 export const SHAPE_LABELS = {
   sphere: '球體', heart: '愛心', star: '星星', galaxy: '銀河', firework: '煙火',
-  spiral: '螺旋', snow: '雪花', dna: 'DNA', butterfly: '蝴蝶', infinity: '無限', note: '音符'
+  spiral: '螺旋', snow: '雪花', dna: 'DNA', butterfly: '蝴蝶', infinity: '無限', note: '音符',
+  castle: '城堡', castleShow: '城堡煙火', missile: '響尾蛇飛彈', mountains: '群山', strike: '飛彈攻山'
 };
+
+/** 佔滿整個視窗的形狀（不跟手移動、不轉動）。 */
+const FULLSCREEN = new Set(['mountains', 'strike']);
+/** 固定在畫面中央、放大顯示的形狀（不跟手移動、不轉動），輪廓才看得清楚。 */
+const CENTERED = new Set(['castle', 'castleShow']);
 
 export const THEMES = {
   space:    { bg: [3, 4, 14],   colors: ['#ffffff', '#9fd8ff', '#c9b0ff', '#7fb0ff', '#ffe7a6'], stars: true },
@@ -15,8 +21,99 @@ export const THEMES = {
 const TAU = Math.PI * 2;
 const rnd = (a = -1, b = 1) => a + Math.random() * (b - a);
 
+/* ---- 用矩形、三角形拼圖，再在裡面撒點（約 1/3 撒在邊線上，輪廓比較清楚） ---- */
+function triArea(t) { return Math.abs((t[2] - t[0]) * (t[5] - t[1]) - (t[4] - t[0]) * (t[3] - t[1])) / 2; }
+function samplePieces(pieces, holes, n, edgeRatio = 1 / 3) {
+  const area = pieces.map(pc => pc.r ? (pc.r[2] - pc.r[0]) * (pc.r[3] - pc.r[1]) : triArea(pc.t));
+  const total = area.reduce((a, b) => a + b, 0);
+  const inHole = (x, y) => holes.some(h => x > h[0] && x < h[2] && y > h[1] && y < h[3]);
+  const out = [];
+  let guard = 0;
+  while (out.length < n && guard++ < n * 20) {
+    let k = Math.random() * total, i = 0;
+    while (k > area[i] && i < area.length - 1) k -= area[i++];
+    const pc = pieces[i], edge = Math.random() < edgeRatio;
+    let x, y;
+    if (pc.r) {
+      const [x0, y0, x1, y1] = pc.r;
+      if (edge) { const side = (Math.random() * 4) | 0, u = Math.random();
+        [x, y] = side === 0 ? [x0 + u * (x1 - x0), y0] : side === 1 ? [x0 + u * (x1 - x0), y1] : side === 2 ? [x0, y0 + u * (y1 - y0)] : [x1, y0 + u * (y1 - y0)];
+      } else { x = rnd(x0, x1); y = rnd(y0, y1); }
+    } else {
+      const t = pc.t;
+      if (edge) { const e = (Math.random() * 3) | 0, u = Math.random(), a = e * 2, b = ((e + 1) % 3) * 2;
+        x = t[a] + u * (t[b] - t[a]); y = t[a + 1] + u * (t[b + 1] - t[a + 1]);
+      } else { let u = Math.random(), v = Math.random(); if (u + v > 1) { u = 1 - u; v = 1 - v; }
+        x = t[0] + u * (t[2] - t[0]) + v * (t[4] - t[0]); y = t[1] + u * (t[3] - t[1]) + v * (t[5] - t[1]);
+      }
+    }
+    if (inHole(x, y)) continue;
+    out.push({ x, y, z: rnd(-0.08, 0.08) });
+  }
+  return out;
+}
+
+/** 原創童話城堡：中央高塔、內側兩座塔、外側兩座塔、城牆垛口、拱門與窗戶。 */
+function castlePoints(n) {
+  const R = (x0, y0, x1, y1) => ({ r: [x0, y0, x1, y1] }), T = (...t) => ({ t });
+  const pieces = [
+    R(-0.8, -0.85, 0.8, -0.3),                                        // 城牆
+    R(-0.98, -0.85, -0.72, 0.1), R(0.72, -0.85, 0.98, 0.1),          // 外側塔
+    T(-1.03, 0.1, -0.67, 0.1, -0.85, 0.55), T(0.67, 0.1, 1.03, 0.1, 0.85, 0.55),
+    R(-0.52, -0.3, -0.32, 0.3), R(0.32, -0.3, 0.52, 0.3),            // 內側塔
+    T(-0.56, 0.3, -0.28, 0.3, -0.42, 0.72), T(0.28, 0.3, 0.56, 0.3, 0.42, 0.72),
+    R(-0.2, -0.3, 0.2, 0.42),                                         // 中央高塔
+    T(-0.26, 0.42, 0.26, 0.42, 0, 1.0),
+    R(-0.008, 1.0, 0.008, 1.12), T(0.008, 1.12, 0.008, 1.04, 0.12, 1.08)   // 旗子
+  ];
+  for (let x = -0.78; x < 0.76; x += 0.13) pieces.push(R(x, -0.3, x + 0.07, -0.22));   // 垛口
+  const holes = [
+    [-0.13, -0.86, 0.13, -0.5],                                       // 城門
+    [-0.06, 0.05, 0.06, 0.22], [-0.47, -0.05, -0.37, 0.1], [0.37, -0.05, 0.47, 0.1],
+    [-0.9, -0.35, -0.8, -0.2], [0.8, -0.35, 0.9, -0.2]               // 窗戶
+  ];
+  const pts = samplePieces(pieces, holes, n, 0.7);   // 七成粒子在輪廓線上，城堡外形比較清楚
+  for (const p of pts) { p.y -= 0.1; p.z = rnd(-0.02, 0.02); }
+  return pts;
+}
+
+/** 飛彈（機頭朝右）：細長彈身、尖頭、前翼、尾翼、尾焰。 */
+function missilePoints(n) {
+  const R = (x0, y0, x1, y1) => ({ r: [x0, y0, x1, y1] }), T = (...t) => ({ t });
+  const pieces = [
+    R(-0.85, -0.055, 0.7, 0.055), T(0.7, -0.055, 0.7, 0.055, 0.98, 0),   // 彈身、彈頭
+    T(0.42, 0.055, 0.56, 0.055, 0.5, 0.17), T(0.42, -0.055, 0.56, -0.055, 0.5, -0.17),   // 前翼
+    T(-0.85, 0.055, -0.6, 0.055, -0.8, 0.27), T(-0.85, -0.055, -0.6, -0.055, -0.8, -0.27)  // 尾翼
+  ];
+  const body = samplePieces(pieces, [], Math.floor(n * 0.85));
+  for (let i = body.length; i < n; i++) {                            // 尾焰：往後散開的錐形
+    const u = Math.random();
+    body.push({ x: -0.86 - u * 0.4, y: rnd(-1, 1) * (0.05 + u * 0.09), z: rnd(-0.05, 0.05) });
+  }
+  return body;
+}
+
+/** 佔滿視窗的群山（x、y 都是 -1～1 對應整個視窗）。前排深、後排淺。 */
+const ridge = (x, peaks, base) => base + Math.max(...peaks.map(([c, h, w]) => h * Math.max(0, 1 - Math.abs(x - c) / w))) + 0.02 * Math.sin(x * 23) + 0.015 * Math.sin(x * 51);
+const FRONT = [[-0.8, 0.4, 0.4], [-0.32, 0.6, 0.42], [0.12, 0.3, 0.32], [0.55, 0.65, 0.4], [0.95, 0.35, 0.35]];
+const BACK = [[-0.6, 0.8, 0.5], [0.0, 1.0, 0.55], [0.72, 0.85, 0.5]];
+function mountainPoints(n) {
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const x = rnd(-1.02, 1.02), k = i % 10;
+    if (k < 4) pts.push({ x, y: ridge(x, FRONT, -0.6) + rnd(-0.01, 0.01), z: 0 });                // 前排稜線
+    else if (k < 7) { const top = ridge(x, FRONT, -0.6); pts.push({ x, y: top - (top + 1) * Math.pow(Math.random(), 1.8), z: 0 }); }   // 前排山體
+    else if (k < 9) pts.push({ x, y: ridge(x, BACK, -0.45) + rnd(-0.01, 0.01), z: 0.4 });         // 後排稜線
+    else { const top = ridge(x, BACK, -0.45); pts.push({ x, y: top - Math.pow(Math.random(), 2.5) * 0.35, z: 0.4 }); }   // 後排山體
+  }
+  return pts;
+}
+
 /** 產生某個形狀的 n 個目標點（大約在 -1～1 的立體空間，y 向上）。 */
 function shapePoints(name, n) {
+  if (name === 'castle' || name === 'castleShow') return shuffle(castlePoints(n));
+  if (name === 'missile') return shuffle(missilePoints(n));
+  if (name === 'mountains' || name === 'strike') return shuffle(mountainPoints(n));
   const pts = [];
   for (let i = 0; i < n; i++) {
     const u = (i + 0.5) / n, r1 = Math.random(), r2 = Math.random();
@@ -81,7 +178,11 @@ function shapePoints(name, n) {
     }
     pts.push({ x, y, z });
   }
-  // 打亂順序，換形狀時粒子會從各處飛過去
+  return shuffle(pts);
+}
+
+/** 打亂順序，換形狀時粒子會從各處飛過去 */
+function shuffle(pts) {
   for (let i = pts.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [pts[i], pts[j]] = [pts[j], pts[i]]; }
   return pts;
 }
@@ -99,18 +200,24 @@ export class ParticleField {
     this.cx = 0.5; this.cy = 0.5; this.tx = 0.5; this.ty = 0.5;
     this.scale = 1; this.scaleTarget = 1;
     this.bgStars = Array.from({ length: 160 }, () => ({ x: Math.random(), y: Math.random(), r: Math.random() * 1.2 + 0.3, tw: Math.random() * TAU }));
+    this.missiles = []; this.rings = []; this.strikeNext = 0; this.shake = 0;   // 飛彈攻山
+    this.rockets = []; this.sparks = []; this.fxUntil = -1; this.fxNext = 0; this.lastT = null;   // 全螢幕煙火
     this.resize(); this.first = true;
     addEventListener('resize', () => this.resize());
   }
   pointsFor(name) { if (!this.cache.has(name)) this.cache.set(name, shapePoints(name, this.count)); return this.cache.get(name); }
   setShape(name) {
     if (name === this.shape) return;
+    this.shapeStart = null;   // 下一格記下換形狀的時間
     this.shape = name; this.target = this.pointsFor(name);
     // 換形狀時給一點爆開的感覺
     for (const q of this.p) { q.x *= 1.25; q.y *= 1.25; q.z *= 1.25; }
   }
   setTarget(x, y) { this.tx = Math.min(1, Math.max(0, x)); this.ty = Math.min(1, Math.max(0, y)); }
   setScale(s) { this.scaleTarget = Math.min(2.6, Math.max(0.5, s)); }
+  /** 全螢幕放煙火，持續到 t + seconds（重複呼叫會延長）。 */
+  celebrate(t, seconds = 3) { this.fxUntil = Math.max(this.fxUntil, t + seconds); }
+  get celebrating() { return this.rockets.length > 0 || this.sparks.length > 0; }
   resize() {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     this.dpr = dpr;
@@ -136,9 +243,13 @@ export class ParticleField {
 
     this.cx += (this.tx - this.cx) * 0.14; this.cy += (this.ty - this.cy) * 0.14;
     this.scale += (this.scaleTarget - this.scale) * 0.1;
-    const base = Math.min(W, H) * 0.3 * this.scale, ox = this.cx * W, oy = this.cy * H;
-    const shape = this.shape;
-    const spin = (shape === 'sphere' || shape === 'dna' || shape === 'firework' || shape === 'galaxy') ? t * 0.45 : Math.sin(t * 0.5) * 0.6;
+    const shape = this.shape, full = FULLSCREEN.has(shape), centered = CENTERED.has(shape);
+    const shx = this.shake > 0 ? rnd(-1, 1) * this.shake : 0, shy = this.shake > 0 ? rnd(-1, 1) * this.shake : 0;
+    this.shake = Math.max(0, this.shake * 0.88 - 0.05);
+    const base = centered ? Math.min(W * 0.4, H * 0.36) : Math.min(W, H) * 0.3 * this.scale;
+    const ox = (centered ? W / 2 : this.cx * W) + shx, oy = (centered ? H * 0.58 : this.cy * H) + shy;
+    const spin = full || centered ? 0 : (shape === 'sphere' || shape === 'dna' || shape === 'firework' || shape === 'galaxy') ? t * 0.45
+      : shape === 'missile' ? Math.sin(t * 0.7) * 0.25 : Math.sin(t * 0.5) * 0.6;
     const cs = Math.cos(spin), sn = Math.sin(spin);
     const tilt = shape === 'galaxy' ? 1.1 : 0, ct = Math.cos(tilt), st = Math.sin(tilt);
     const boom = shape === 'firework' ? 0.55 + 0.6 * (1 - Math.pow(1 - ((t * 0.55) % 1), 3)) : 1;
@@ -155,11 +266,120 @@ export class ParticleField {
       let x = q.x * cs + q.z * sn, z = -q.x * sn + q.z * cs, y = q.y;
       const y2 = y * ct - z * st; z = y * st + z * ct; y = y2;
       const persp = 1 / (1 + z * 0.35);
-      const sx = ox + x * base * persp, sy = oy - y * base * persp;
+      const sx = full ? W / 2 + shx + x * W / 2 : ox + x * base * persp, sy = full ? H / 2 + shy - y * H / 2 : oy - y * base * persp;
       const r = pr * persp * (0.8 + 0.4 * Math.sin(t * 3 + q.tw));
       paths[q.c].moveTo(sx + r, sy); paths[q.c].arc(sx, sy, r, 0, TAU);
     }
     theme.colors.forEach((c, i) => { ctx.fillStyle = c; ctx.fill(paths[i]); });
+    if (shape === 'strike') this.drawStrike(t, W, H);
+    else { this.missiles.length = 0; this.rings.length = 0; }
+    this.drawFireworks(t, W, H);
     ctx.globalCompositeOperation = 'source-over';
+  }
+
+  /** 飛彈攻山：飛彈從天空兩側射向山上，命中就爆炸，附近的粒子被炸開後慢慢回到原位。 */
+  drawStrike(t, W, H) {
+    const ctx = this.ctx, u = Math.max(1, Math.min(W, H) / 500), dt = this.lastT === null ? 0 : Math.min(0.05, Math.max(0, t - this.lastT));
+    if (this.shapeStart === null || this.shapeStart === undefined) this.shapeStart = t;
+    // 先讓群山聚合成形，1.5 秒後才開始發射飛彈
+    if (t - this.shapeStart >= 1.5 && t >= this.strikeNext) {
+      const g = this.target[(Math.random() * this.target.length) | 0];
+      const tx = W / 2 + g.x * W / 2, ty = H / 2 - g.y * H / 2, fromLeft = Math.random() < 0.5;
+      const x = fromLeft ? rnd(-0.1, 0.3) * W : rnd(0.7, 1.1) * W, y = -0.08 * H;
+      this.missiles.push({ x, y, tx, ty, v: Math.hypot(W, H) * rnd(0.45, 0.65) });
+      this.strikeNext = t + rnd(0.25, 0.6);
+    }
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    for (let i = this.missiles.length - 1; i >= 0; i--) {
+      const m = this.missiles[i], dx = m.tx - m.x, dy = m.ty - m.y, d = Math.hypot(dx, dy) || 1, step = m.v * dt;
+      const ux = dx / d, uy = dy / d;
+      if (step >= d) { this.missiles.splice(i, 1); this.explode(m.tx, m.ty, W, H); continue; }
+      m.x += ux * step; m.y += uy * step;
+      const L = 22 * u;
+      // 尾焰與煙
+      const fl = ctx.createLinearGradient(m.x, m.y, m.x - ux * L * 3, m.y - uy * L * 3);
+      fl.addColorStop(0, 'rgba(255,220,120,0.95)'); fl.addColorStop(0.3, 'rgba(255,120,40,0.6)'); fl.addColorStop(1, 'rgba(120,120,140,0)');
+      ctx.strokeStyle = fl; ctx.lineWidth = 4 * u;
+      ctx.beginPath(); ctx.moveTo(m.x - ux * L, m.y - uy * L); ctx.lineTo(m.x - ux * L * 4, m.y - uy * L * 4); ctx.stroke();
+      // 彈身與彈翼
+      ctx.strokeStyle = '#e8edf5'; ctx.lineWidth = 3 * u;
+      ctx.beginPath(); ctx.moveTo(m.x - ux * L, m.y - uy * L); ctx.lineTo(m.x + ux * L * 0.4, m.y + uy * L * 0.4); ctx.stroke();
+      ctx.lineWidth = 1.6 * u;
+      for (const s of [1, -1]) {
+        ctx.beginPath(); ctx.moveTo(m.x - ux * L * 0.9, m.y - uy * L * 0.9); ctx.lineTo(m.x - ux * L * 1.1 - uy * s * 7 * u, m.y - uy * L * 1.1 + ux * s * 7 * u); ctx.stroke();
+      }
+    }
+    for (let i = this.rings.length - 1; i >= 0; i--) {             // 衝擊波
+      const r = this.rings[i]; r.life -= dt * 1.6; r.r += dt * Math.min(W, H) * 0.5;
+      if (r.life <= 0) { this.rings.splice(i, 1); continue; }
+      ctx.strokeStyle = `rgba(255,200,140,${r.life * 0.7})`; ctx.lineWidth = 3 * u * r.life;
+      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, TAU); ctx.stroke();
+    }
+  }
+
+  /** 爆炸：閃光、衝擊波、火花，並把附近的山粒子炸開。 */
+  explode(x, y, W, H) {
+    const ctx = this.ctx, R = Math.min(W, H) * 0.16;
+    const flash = ctx.createRadialGradient(x, y, 0, x, y, R);
+    flash.addColorStop(0, 'rgba(255,250,220,0.95)'); flash.addColorStop(0.4, 'rgba(255,150,50,0.6)'); flash.addColorStop(1, 'rgba(255,60,0,0)');
+    ctx.fillStyle = flash; ctx.beginPath(); ctx.arc(x, y, R, 0, TAU); ctx.fill();
+    this.rings.push({ x, y, r: R * 0.2, life: 1 });
+    const count = 60 + ((Math.random() * 40) | 0), speed = Math.min(W, H) * 0.4;
+    for (let k = 0; k < count; k++) {
+      const a = Math.random() * TAU, v = speed * rnd(0.2, 1);
+      this.sparks.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - speed * 0.3, life: 1, decay: rnd(0.6, 1.1), hue: rnd(10, 50) });
+    }
+    for (const q of this.p) {                                        // 炸開附近的粒子（之後會自己飛回去）
+      const px = W / 2 + q.x * W / 2, py = H / 2 - q.y * H / 2, dx = px - x, dy = py - y, d = Math.hypot(dx, dy);
+      if (d < R && d > 0) { const f = (1 - d / R) * R * 0.9; q.x += dx / d * f * 2 / W; q.y -= dy / d * f * 2 / H; }
+    }
+    this.shake = Math.min(14, this.shake + 7);
+  }
+
+  /** 全螢幕煙火：從底部發射，升到高處後炸開，火花受重力往下掉、慢慢變暗。 */
+  drawFireworks(t, W, H) {
+    const dt = this.lastT === null ? 0 : Math.min(0.05, Math.max(0, t - this.lastT));
+    this.lastT = t;
+    if (t < this.fxUntil && t >= this.fxNext) {
+      const n = Math.random() < 0.3 ? 2 : 1;
+      for (let k = 0; k < n; k++) {
+        const x = W * rnd(0.08, 0.92);
+        const sky = CENTERED.has(this.shape);   // 城堡煙火：只在城堡上方的天空炸開，不蓋住城堡
+        this.rockets.push({ x: sky ? W * (Math.random() < 0.5 ? rnd(0.05, 0.3) : rnd(0.7, 0.95)) : x, y: H + 10, vx: rnd(-0.04, 0.04) * W, vy: -H * rnd(1.1, 1.5), ty: H * (sky ? rnd(0.1, 0.28) : rnd(0.12, 0.5)), hue: Math.random() * 360 });
+      }
+      this.fxNext = t + (CENTERED.has(this.shape) ? rnd(0.35, 0.7) : rnd(0.15, 0.4));
+    }
+    if (!this.rockets.length && !this.sparks.length) return;
+    const ctx = this.ctx, g = H * 0.35, u = Math.max(1, Math.min(W, H) / 500);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    // 火箭
+    for (let i = this.rockets.length - 1; i >= 0; i--) {
+      const r = this.rockets[i];
+      const px = r.x, py = r.y;
+      r.x += r.vx * dt; r.y += r.vy * dt; r.vy += g * 0.5 * dt;
+      ctx.strokeStyle = `hsla(${r.hue},100%,80%,0.9)`; ctx.lineWidth = 2.2 * u;
+      ctx.beginPath(); ctx.moveTo(px, py + 12 * u); ctx.lineTo(r.x, r.y); ctx.stroke();
+      if (r.y <= r.ty || r.vy >= 0) {
+        this.rockets.splice(i, 1);
+        const count = 70 + ((Math.random() * 50) | 0), speed = Math.min(W, H) * rnd(0.35, 0.55), twoTone = Math.random() < 0.4;
+        for (let k = 0; k < count; k++) {
+          const a = (k / count) * TAU + rnd(-0.05, 0.05), v = speed * rnd(0.55, 1);
+          const hue = twoTone && k % 2 ? (r.hue + 140) % 360 : r.hue + rnd(-15, 15);
+          this.sparks.push({ x: r.x, y: r.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 1, decay: rnd(0.45, 0.75), hue });
+        }
+      }
+    }
+    // 火花
+    for (let i = this.sparks.length - 1; i >= 0; i--) {
+      const s = this.sparks[i];
+      const px = s.x, py = s.y;
+      s.vx *= Math.pow(0.35, dt); s.vy = s.vy * Math.pow(0.35, dt) + g * dt;
+      s.x += s.vx * dt; s.y += s.vy * dt; s.life -= s.decay * dt;
+      if (s.life <= 0) { this.sparks.splice(i, 1); continue; }
+      ctx.strokeStyle = `hsla(${s.hue},100%,${60 + s.life * 25}%,${Math.min(1, s.life * 1.4)})`;
+      ctx.lineWidth = (1 + s.life * 1.8) * u;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(s.x, s.y); ctx.stroke();
+    }
   }
 }

@@ -1,10 +1,10 @@
 /* 把鏡頭、手勢、粒子、音樂接起來。鏡頭、滑鼠、驗收都走同一條 feed()。 */
-import CONFIG from './config.js';
-import { countFingers, GestureSmoother, FistHold, shapeFor } from './gesture.js';
-import { ParticleField, SHAPE_LABELS } from './particles.js';
-import { Music } from './music.js';
-import { startCamera, explainCameraError } from './camera.js';
-import { drawQR } from './qr.js';
+import CONFIG from './config.js?v=6';
+import { gestureCode, armsSpread, GestureSmoother, FistHold, shapeFor } from './gesture.js?v=6';
+import { ParticleField, SHAPE_LABELS } from './particles.js?v=6';
+import { Music } from './music.js?v=6';
+import { startCamera, explainCameraError } from './camera.js?v=6';
+import { drawQR } from './qr.js?v=6';
 
 const $ = s => document.querySelector(s);
 const TEST = new URLSearchParams(location.search).get('test') === '1';
@@ -13,6 +13,8 @@ const TOUCH = matchMedia('(pointer: coarse)').matches;
 const MOUSE_HELP = TOUCH
   ? '手指在畫面上滑動＝食指，點下方「比 1～5」換形狀，按住「握拳」切換音樂。'
   : '移動滑鼠＝食指，按 1～5 換形狀，按住空白鍵＝握拳。';
+/** 特殊手勢 6～10 對應的畫面（1～5 照 config.js 的 shapes） */
+const SCENES = { 6: 'castle', 7: 'castleShow', 8: 'missile', 9: 'mountains', 10: 'strike' };
 const THEME_LABEL = { space: '星空', ocean: '海洋', neon: '霓虹', festival: '節慶' };
 
 document.title = CONFIG.title;
@@ -27,6 +29,7 @@ const music = new Music(CONFIG.music);
 const smoother = new GestureSmoother(CONFIG.smooth || 5);
 const fist = new FistHold(CONFIG.fistSeconds || 0.5);
 let mode = 'mouse', fingers = null, shape = shapes[0], lastT = null, cam = null, started = TEST;
+let spreadSince = null;   // 雙手張開從什麼時候開始
 
 /* ---------- 唯一的手勢處理路徑 ---------- */
 function feed(t, raw, x, y) {
@@ -38,7 +41,7 @@ function feed(t, raw, x, y) {
   }
   smoother.add(raw);
   fingers = smoother.value;
-  const s = shapeFor(fingers, shapes);
+  const s = shapeFor(fingers, shapes) || SCENES[fingers] || null;
   if (s && s !== shape) { shape = s; field.setShape(s); }
   if (fist.update(t, raw === 0 && fingers === 0)) music.toggle();
   if (Number.isFinite(x) && Number.isFinite(y)) field.setTarget(x, y);
@@ -47,7 +50,8 @@ function feed(t, raw, x, y) {
 
 window.__show = {
   state: () => ({ mode, fingers, shape, playing: music.playing, particles: field.p.length, theme: CONFIG.theme, title: CONFIG.title }),
-  feed: (t, f, x, y) => feed(t, f, x, y)
+  feed: (t, f, x, y) => feed(t, f, x, y),
+  fireworks: (seconds = 3) => field.celebrate(performance.now() / 1000, seconds)
 };
 
 /* ---------- 畫面文字 ---------- */
@@ -80,7 +84,8 @@ function setStatus(text, kind = '') { const el = $('#status'); el.textContent = 
 let mx = 0.5, my = 0.5, mouseFingers = 1, fistDown = false;
 addEventListener('pointermove', e => { mx = e.clientX / innerWidth; my = e.clientY / innerHeight; });
 addEventListener('keydown', e => {
-  if (e.key >= '1' && e.key <= '5') mouseFingers = +e.key;
+  if (e.key >= '1' && e.key <= '9') mouseFingers = +e.key;
+  if (e.key === '0') mouseFingers = 10;
   if (e.code === 'Space') { fistDown = true; e.preventDefault(); }
   if (e.key === 'n' || e.key === 'N') music.next();
 });
@@ -156,16 +161,23 @@ function loop(ms) {
       const hands = cam.detect();
       if (hands.length) {
         const h = hands[0], tip = h[8];
-        feed(t, countFingers(h), 1 - tip.x, tip.y);          // 鏡像：手往右，粒子也往右
+        // 1～5 一般手勢；6～10 特殊手勢（城堡、飛彈、群山…），見 gesture.js 的 gestureCode
+        feed(t, gestureCode(hands), 1 - tip.x, tip.y);   // 鏡像：手往右，粒子也往右
+        // 雙手張開維持 0.3 秒 → 全螢幕放煙火；手一直張開就一直放，放下後再放 3 秒
+        if (armsSpread(hands)) {
+          if (spreadSince === null) spreadSince = t;
+          if (t - spreadSince >= 0.3) field.celebrate(t, 3);
+        } else spreadSince = null;
         if (hands.length >= 2) {
           const a = hands[0][8], b = hands[1][8];
           field.setScale(0.7 + Math.hypot(a.x - b.x, a.y - b.y) * 2.4);
         } else field.setScale(1);
-      } else feed(t, null);
+      } else { feed(t, null); spreadSince = null; }
     } else if (mode === 'mouse') {
       feed(t, fistDown ? 0 : mouseFingers, mx, my);
     }
   }
+  if (shape === 'castleShow') field.celebrate(t, 0.3);   // 比 7：城堡＋煙火
   field.frame(t);
   render();
   requestAnimationFrame(loop);
