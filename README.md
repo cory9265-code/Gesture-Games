@@ -12,3 +12,8 @@
 接下來：回講義第三篇，把規格寫完、打包成「第三篇指令包」，交給您的 AI。
 
 授權：Google MediaPipe Tasks Vision 0.10.14 與 hand_landmarker 模型為 Apache-2.0；驗收樣本的手勢照片為 AI 生成，不是真實人物。
+
+## 發佈到網路（GitHub Pages）
+1. 雙擊 `publish.bat`，登入 GitHub，檔案就會上傳到 https://github.com/cory9265-code/Gesture-Games
+2. 到 repo 的 Settings → Pages：Branch 選 `main`、資料夾選 `/ (root)`，按 Save。
+3. 約 1 分鐘後打開 https://cory9265-code.github.io/Gesture-Games/ ，按「📱 分享 QR 碼」，別人用手機一掃就能玩（https，手機鏡頭也能用）。

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>我的手勢音樂粒子秀</title>
+<link rel="icon" href="data:,">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -17,6 +18,7 @@
     <div class="wide"><small>音樂</small><strong id="vMusic">⏸ 已暫停</strong></div>
     <div><small>模式</small><strong id="vMode">滑鼠</strong></div>
   </div>
+  <button id="btnShare" type="button" class="share">📱 分享 QR 碼</button>
 </header>
 
 <p id="status" hidden></p>
@@ -36,6 +38,19 @@
 
 <div id="preview" hidden><video id="video" playsinline muted></video></div>
 
+<section id="shareBox" role="dialog" aria-labelledby="shareTitle" hidden>
+  <div class="card">
+    <h2 id="shareTitle">用手機掃描，一起玩</h2>
+    <canvas id="qr" aria-label="這個網頁的 QR 碼"></canvas>
+    <p id="shareUrl" class="url"></p>
+    <p id="shareWarn" class="warn" hidden></p>
+    <div class="btns">
+      <button id="btnCopy" type="button">複製網址</button>
+      <button id="btnCloseShare" type="button" class="primary">關閉</button>
+    </div>
+  </div>
+</section>
+
 <section id="start" role="dialog" aria-labelledby="startTitle">
   <div class="card">
     <h1 id="startTitle">我的手勢音樂粒子秀</h1>
@@ -46,6 +61,7 @@
       <button id="btnMouse" type="button">🖱️ 沒有鏡頭，用滑鼠玩</button>
     </div>
     <p class="note">影像只在這台電腦處理，不上傳、不存檔。</p>
+    <button id="btnShare2" type="button" class="share">📱 分享 QR 碼給別人</button>
   </div>
 </section>
 

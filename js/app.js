@@ -4,10 +4,15 @@ import { countFingers, GestureSmoother, FistHold, shapeFor } from './gesture.js'
 import { ParticleField, SHAPE_LABELS } from './particles.js';
 import { Music } from './music.js';
 import { startCamera, explainCameraError } from './camera.js';
+import { drawQR } from './qr.js';
 
 const $ = s => document.querySelector(s);
 const TEST = new URLSearchParams(location.search).get('test') === '1';
 const shapes = Array.isArray(CONFIG.shapes) && CONFIG.shapes.length ? CONFIG.shapes : ['sphere'];
+const TOUCH = matchMedia('(pointer: coarse)').matches;
+const MOUSE_HELP = TOUCH
+  ? '手指在畫面上滑動＝食指，點下方「比 1～5」換形狀，按住「握拳」切換音樂。'
+  : '移動滑鼠＝食指，按 1～5 換形狀，按住空白鍵＝握拳。';
 const THEME_LABEL = { space: '星空', ocean: '海洋', neon: '霓虹', festival: '節慶' };
 
 document.title = CONFIG.title;
@@ -61,7 +66,7 @@ function render() {
   $('#vFingers').textContent = fTxt;
   $('#vShape').textContent = lbl(shape);
   $('#vMusic').textContent = mTxt;
-  $('#vMode').textContent = mode === 'camera' ? '鏡頭' : '滑鼠';
+  $('#vMode').textContent = mode === 'camera' ? '鏡頭' : (TOUCH ? '觸控' : '滑鼠');
   $('#mouseHelp').hidden = mode !== 'mouse';
   $('#toCamera').hidden = mode !== 'mouse' || TEST;
   $('#toMouse').hidden = mode !== 'camera';
@@ -97,16 +102,41 @@ async function useCamera() {
     setTimeout(() => { if (mode === 'camera') setStatus(''); }, 5000);
   } catch (e) {
     cam = null; mode = 'mouse'; $('#preview').hidden = true;
-    setStatus(explainCameraError(e) + '。已自動改成滑鼠模式：移動滑鼠＝食指，按 1～5 換形狀，按住空白鍵＝握拳。', 'warn');
+    setStatus(explainCameraError(e) + '。已自動改成' + (TOUCH ? '觸控' : '滑鼠') + '模式：' + MOUSE_HELP, 'warn');
   }
   render();
 }
 function useMouse() {
   if (cam) { cam.stop(); cam = null; }
-  mode = 'mouse'; $('#preview').hidden = true; setStatus('現在是滑鼠模式：移動滑鼠＝食指，按 1～5 換形狀，按住空白鍵＝握拳。', 'info'); render();
+  mode = 'mouse'; $('#preview').hidden = true; setStatus('現在是' + (TOUCH ? '觸控' : '滑鼠') + '模式：' + MOUSE_HELP, 'info');
+  setTimeout(() => { if (mode === 'mouse' && $('#status').className === 'info') setStatus(''); }, 7000);
+  render();
 }
 $('#toCamera').addEventListener('click', () => useCamera());
+$('#toMouse').textContent = TOUCH ? '改用觸控' : '改用滑鼠';
 $('#toMouse').addEventListener('click', () => useMouse());
+
+/* ---------- 分享 QR 碼：自動用目前的網址（放到哪個網域都適用） ---------- */
+function openShare() {
+  const url = location.origin + location.pathname;          // 不帶 ?test=1 之類的參數
+  const host = location.hostname, local = location.protocol === 'file:' || host === 'localhost' || host === '127.0.0.1' || host === '[::1]';
+  try { drawQR($('#qr'), url, 8); } catch (e) { setStatus('QR 碼產生失敗：' + e.message, 'warn'); return; }
+  $('#shareUrl').textContent = url;
+  const warn = local
+    ? '這是本機網址，只有這台電腦打得開。上傳到 GitHub Pages 後，用公開網址打開再按「分享 QR 碼」，就會變成別人也能掃的 QR 碼。'
+    : (location.protocol !== 'https:' ? '這個網址不是 https，手機的鏡頭會被瀏覽器擋住，只能用觸控玩。' : '');
+  $('#shareWarn').textContent = warn; $('#shareWarn').hidden = !warn;
+  $('#btnCopy').textContent = '複製網址';
+  $('#shareBox').hidden = false;
+}
+$('#btnShare').addEventListener('click', openShare);
+$('#btnShare2').addEventListener('click', openShare);
+$('#btnCloseShare').addEventListener('click', () => { $('#shareBox').hidden = true; });
+$('#shareBox').addEventListener('click', e => { if (e.target.id === 'shareBox') $('#shareBox').hidden = true; });
+$('#btnCopy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('#shareUrl').textContent); $('#btnCopy').textContent = '已複製 ✔'; }
+  catch (e) { $('#btnCopy').textContent = '請手動選取網址複製'; }
+});
 
 /* ---------- 開始畫面 ---------- */
 function begin(withCamera) {
